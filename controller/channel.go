@@ -453,6 +453,17 @@ func validateChannel(channel *model.Channel, isAdd bool) error {
 		}
 	}
 
+	// 校验 ModelMapping JSON 格式
+	if channel.ModelMapping != nil {
+		trimmed := strings.TrimSpace(*channel.ModelMapping)
+		if trimmed != "" && trimmed != "{}" {
+			var modelMap map[string]string
+			if err := common.Unmarshal([]byte(trimmed), &modelMap); err != nil {
+				return fmt.Errorf("模型映射[model_mapping] 必须是合法的 JSON 格式 (map[string]string): %s", err.Error())
+			}
+		}
+	}
+
 	// VertexAI 特殊校验
 	if channel.Type == constant.ChannelTypeVertexAi {
 		if channel.Other == "" {
@@ -790,6 +801,20 @@ func EditTagChannels(c *gin.Context) {
 			return
 		}
 		channelTag.HeaderOverride = common.GetPointer[string](trimmed)
+	}
+	if channelTag.ModelMapping != nil {
+		trimmed := strings.TrimSpace(*channelTag.ModelMapping)
+		if trimmed != "" && trimmed != "{}" {
+			var modelMap map[string]string
+			if err := common.Unmarshal([]byte(trimmed), &modelMap); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "模型映射必须是合法的 JSON 格式 (map[string]string)",
+				})
+				return
+			}
+		}
+		channelTag.ModelMapping = common.GetPointer[string](trimmed)
 	}
 	err = model.EditChannelByTag(channelTag.Tag, channelTag.NewTag, channelTag.ModelMapping, channelTag.Models, channelTag.Groups, channelTag.Priority, channelTag.Weight, channelTag.ParamOverride, channelTag.HeaderOverride)
 	if err != nil {
